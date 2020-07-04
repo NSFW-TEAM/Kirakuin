@@ -1,0 +1,125 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct jugadores jugadores;
+
+void ingresar(char *);
+jugadores *cargarJugador(char *);
+jugadores *crearJugador(char *);
+int transformarAEntero(char *);
+const char *get_csv_field (char *, int);
+char * _strdup (const char *);
+
+struct jugadores{
+
+    int def;
+    int atk;
+    int level;
+    char *nombre;
+
+};
+
+int main(){
+
+    jugadores *jugador;
+
+    char nombre[101];
+
+    scanf("%[^\n]s", nombre);
+
+    ingresar(nombre);
+
+    jugador = cargarJugador(nombre);
+
+    printf("%s %d %d %d", jugador->nombre, jugador->def, jugador->atk, jugador->level);
+
+    return 0;
+}
+
+jugadores *cargarJugador(char *nombre){
+
+    jugadores *jugador;
+
+    FILE *cargar= fopen("jugadores.txt", "r");
+    if(cargar == NULL)
+    {
+        printf("NO SE PUDO ABRIR EL ARCHIVO");
+    }
+
+    char linea[101];
+
+    while(fgets(linea, 100, cargar) != NULL)
+    {
+        jugador = crearJugador(linea);
+        if(strcmp(jugador->nombre,nombre) == 0){
+            fclose(cargar);
+            return jugador;
+        }
+    }
+
+    return NULL;
+}
+
+jugadores *crearJugador(char *linea){
+
+    jugadores *jugador = (jugadores *) malloc(sizeof(jugadores)); // Asigna memoria a todo la struct
+
+    jugador->nombre = get_csv_field(linea, 1);
+    jugador->def = transformarAEntero(get_csv_field(linea,2));
+    jugador->atk = transformarAEntero(get_csv_field(linea,3));
+    jugador->level = transformarAEntero(get_csv_field(linea,4));
+
+    return jugador;
+
+}
+
+void ingresar(char *nombre){
+    char *name=nombre;
+    FILE *nuevoJugador = fopen("jugadores.txt", "a");
+    fputs(nombre,nuevoJugador);
+    fputs(",", nuevoJugador);
+    fputs("100", nuevoJugador);
+    fputs(",", nuevoJugador);
+    fputs("100", nuevoJugador);
+    fputs(",", nuevoJugador);
+    fputs("1", nuevoJugador);
+    fputs("\n", nuevoJugador);
+    fclose(nuevoJugador);
+
+}
+
+int transformarAEntero(char *charNumero){
+
+
+    int largo = strlen(charNumero);
+    int numero = 0;
+    for(int i=0;i<largo;i++){
+        numero=(charNumero[i]-48)+(numero*10);
+    }
+    return numero;
+}
+
+char * _strdup (const char *s) {
+
+	size_t len = strlen (s) + 1;
+    void *new = malloc (len);
+
+	if (new == NULL)
+	    return NULL;
+
+	return (char *) memcpy (new, s, len);
+}
+
+const char *get_csv_field (char * tmp, int i) {
+
+    char * line = _strdup (tmp);
+    const char * tok;
+    for (tok = strtok (line, ","); tok && *tok; tok = strtok (NULL, ",\n")) {
+        if (!--i) {
+            return tok;
+        }
+    }
+    return NULL;
+}
+
