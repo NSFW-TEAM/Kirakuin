@@ -11,6 +11,8 @@
 #define ESPACIO 20
 typedef struct level level;
 
+void nueva_partida(void);
+
 struct level{
     level *izq;
     level *der;
@@ -40,13 +42,9 @@ typedef struct enemigo{
     char *nombre;
 }enemigo;
 
-
 level * create_node(int id) {
-
     level *new = (level * )malloc (sizeof (level));
-
     assert (new != NULL); // No hay memoria para reservar la Lista.
-
     new->izq=NULL;
     new->der=NULL;
     new->up=NULL;
@@ -55,7 +53,6 @@ level * create_node(int id) {
     new->recorrido=0;
     new->cofre=0;
     new->id=id;
-
     return new;
 }
 
@@ -89,6 +86,7 @@ void print_player(WINDOW* ventana,int y,int x, int dir){
     mvwprintw(ventana,y+4,x," U-U ");
     }
 }
+
 void vanish_player(WINDOW* ventana, int y, int x){
     mvwprintw(ventana,y,x,"     ");
     mvwprintw(ventana,y+1,x,"     ");
@@ -97,22 +95,69 @@ void vanish_player(WINDOW* ventana, int y, int x){
     mvwprintw(ventana,y+4,x,"     ");
 }
 
-void generate_map_type(WINDOW* ventana,int type,int yMax, int xMax){
+void generate_map_type(WINDOW* ventana,int type){
     int i,j;
-    if(type==0){
+    if(type==0){ //tipo de nivel inicial
         for(i=1;i<=106;i++){
             mvwprintw(ventana,5,i,"@");
         }
         for(i=1;i<=106;i++){
             mvwprintw(ventana,16,i,"@");
         }
-        for(i=1;i<=106;i+=6){
+        for(i=1;i<=106;i+=2){
             for(j=1;j<21;j++){
                 if(j==5){
                     j=16;
                 }else{
-                    mvwprintw(ventana,j,i,"_./'\\.");
+                    mvwprintw(ventana,j,i,"/\\");
                 }
+            }
+        }
+        for(i=5;i<=16;i++){
+            mvwprintw(ventana,i,1,"/\\/\\/@");
+        }
+    }
+    if(type==1){ //tipo de nivel 1
+        for(i=1;i<=106;i++){
+            mvwprintw(ventana,5,i,"@");
+        }
+        for(i=1;i<=106;i++){
+            mvwprintw(ventana,16,i,"@");
+        }
+        for(i=1;i<=106;i+=2){
+            for(j=1;j<21;j++){
+                if(j==5){
+                    j=16;
+                }else{
+                    mvwprintw(ventana,j,i,"/\\");
+                }
+            }
+        }
+        for(i=60;i<=106;i++){
+            for(j=1;j<=21;j++){
+                mvwprintw(ventana,j,i," ");
+            }
+        }
+        for(i=1;i<=21;i++){
+            mvwprintw(ventana,i,81,"@");
+        }
+        for(i=1;i<=21;i++){
+            for(j=82;j<=106;j+=2){
+                mvwprintw(ventana,i,j,"/\\");
+            }
+        }
+        for(i=1;i<=21;i++){
+            if(i==5){
+                i=16;
+            }else{
+                mvwprintw(ventana,i,1,"/\\");
+            }
+        }
+        for(i=1;i<=21;i++){
+            if(i==6){
+                i=15;
+            }else{
+                mvwprintw(ventana,i,60,"@");
             }
         }
     }
@@ -120,72 +165,120 @@ void generate_map_type(WINDOW* ventana,int type,int yMax, int xMax){
     return;
 }
 
+//funcion de colisiones, type= tipo de mapa
+void canmove(int type,int y,int x,int* left,int* right,int* up,int* down){
+    if(type==0){
+        if(x<101){
+            *right = 1;
+        }else{
+            *right = 0;
+        }
+        if(x>7){
+            *left = 1;
+        }else{
+            *left = 0;
+        }
+        if(y>6){
+            *up = 1;
+        }else{
+            *up = 0;
+        }
+        if(y<11){
+            *down = 1;
+        }else{
+            *down = 0;
+        }
+    }
+    if(type==1){
+        if(x<76){
+            *right = 1;
+        }else{
+            *right = 0;
+        }
+        if(((x>2) && (y>5 && y<12)) || (x>61)){
+            *left = 1;
+        }else{
+            *left = 0;
+        }
+        if((x>60 && y>1) || (y>6 && y<12)) {
+            *up = 1;
+        }else{
+            *up = 0;
+        }
+        if((x>60 && y<16) || (y>5 && y<11)){
+            *down = 1;
+        }else{
+            *down = 0;
+        }
+    }
+}
 
-
+//Inicializa el gameplay del juego
 void gameplay(){
-    int player_x = 7;
-    int player_y = 7;
+    int player_x = 10;
+    int player_y = 9;
     int key;
-    int canmove = 0;
+    int i;
+    int canmoveleft,canmoveright,canmoveup,canmovedown;
     initscr();
     noecho();
     cbreak();
     start_color();
-    init_pair(10,COLOR_WHITE,COLOR_BLACK); //fondo
     init_pair(11,COLOR_RED,COLOR_BLACK);
-    init_pair(3,COLOR_WHITE,COLOR_BLUE);
     bkgd(COLOR_PAIR(10));
     int yMax , xMax;
     getmaxyx(stdscr, yMax , xMax);
-    WINDOW * menuwin = newwin(5, xMax-12,yMax-6, 5);
-    WINDOW * gamewin = newwin(22,xMax-12,1,5);//y,x,mover arriba,mover derecha
+    WINDOW * menuwin = newwin(6, 108,24, 5);
+    WINDOW * gamewin = newwin(22,108,1,5);//y,x,mover arriba,mover derecha
     wbkgd(gamewin,COLOR_PAIR(11));
     wbkgd(menuwin,COLOR_PAIR(11));
-    generate_map_type(gamewin,0,yMax,xMax);
+    generate_map_type(gamewin,0); //generar tipo de mapa
     box(menuwin,0,0);
     box(gamewin,0,0);
-    print_player(gamewin,player_x,player_y,2);
+    print_player(gamewin,player_y,player_x,2);
     refresh();
-    canmove=1;
     keypad(gamewin,true);
-    //------------------------------------------------------------------------------------
-    while(canmove==1){
+
+    while(1){
         wrefresh(gamewin);
         wrefresh(menuwin);
+        canmove(0,player_y,player_x,&canmoveleft,&canmoveright,&canmoveup,&canmovedown);
         key = wgetch(gamewin);
         if(key==KEY_RIGHT){
+            if(canmoveright==1){
                 vanish_player(gamewin,player_y,player_x);
                 player_x+=1;
                 print_player(gamewin,player_y,player_x,2);
+            }
         }
         if(key==KEY_LEFT){
+            if(canmoveleft==1){
                 vanish_player(gamewin,player_y,player_x);
                 player_x-=1;
                 print_player(gamewin,player_y,player_x,0);
+            }
         }
         if(key==KEY_UP){
-                
+                if(canmoveup==1){
                     vanish_player(gamewin,player_y,player_x);
                     player_y-=1;
                     print_player(gamewin,player_y,player_x,3);
-                
+                }
         }
         if(key==KEY_DOWN){
-                
+                if(canmovedown==1){
                     vanish_player(gamewin,player_y,player_x);
                     player_y+=1;
                     print_player(gamewin,player_y,player_x,1);
-                
+                }
         }
+
     }
-    //------------------------------------------------------------------------------------
     wrefresh(gamewin);
     wrefresh(menuwin);
     keypad(menuwin,true);
-
     getch();
 }
-
 
 jugador *crear_jugador (int level ,char *nombre, int atak,int dfs){
     jugador *p = malloc(sizeof(jugador));
@@ -205,8 +298,6 @@ void typewriter(int x, int y, int velocidad, WINDOW* ventana, char* text){
     }
 }
 
-
-
 void showtitle(int x, int y, int velocidad){
     typewriter(y,x,velocidad,stdscr,"==================================================================================");
     typewriter(y+1,x,velocidad,stdscr,"-@@@---@@@@-@@@@@@-@@@@@@@-------@@@@----@@@---@@@@-@@@@----@@@@-@@@@@@-@@-----@@-");
@@ -221,7 +312,7 @@ void showtitle(int x, int y, int velocidad){
 
 int menu_principal(){
     
-    int key;
+    int key=KEY_LEFT; 
     
     noecho();
     cbreak();
@@ -233,6 +324,7 @@ int menu_principal(){
     WINDOW * menuwin = newwin(6, xMax-12,yMax-8, 5);
     int yMac, xMac;
     getmaxyx(menuwin,yMac,xMac);
+    
     showtitle(1,5,1);
 
     box(menuwin,0,0);
@@ -240,12 +332,9 @@ int menu_principal(){
     wrefresh(menuwin);
 
     keypad(menuwin,true);
-    int y =1; 
 
-    if (has_colors()){
-        
-        int beep(void);
-        
+
+        int y =1; 
         start_color();
         init_pair(1,COLOR_WHITE,COLOR_GREEN);
         init_pair(2,COLOR_WHITE,COLOR_BLUE);
@@ -267,7 +356,6 @@ int menu_principal(){
         	key = wgetch(menuwin);
         	wrefresh(menuwin);
 
-
         	if(key == KEY_UP){
                 mvwprintw(menuwin,y,1," ");
                 y--;
@@ -276,8 +364,7 @@ int menu_principal(){
                 
                 wmove(menuwin,y,1);
                 mvwprintw(menuwin,y,1,">");
-                
-                
+                   
                 continue;
         	}
         	
@@ -293,12 +380,12 @@ int menu_principal(){
 
         }while(key != ENTER);
         
-	refresh();
-    }
+	    refresh();
 
     return y;
 
 }
+
 void ingresar(char *nombre){
     char *name=nombre;
     FILE *nuevoJugador = fopen("jugadores.txt", "a");
@@ -311,9 +398,6 @@ void ingresar(char *nombre){
     fputs("1", nuevoJugador);
     fputs("\n", nuevoJugador);
     fclose(nuevoJugador);
-
-
-
 }
 
 /*void ingresar(char *nombre){
@@ -336,7 +420,7 @@ void borrarPantalla(){
 typewriter(9,23,50,stdscr,"                   ");
 typewriter(10,23,50,stdscr,"                        ");
 //typewriter(11,23,50,stdscr,"tu nombre es: ");
-typewriter(11,23,80,stdscr,"                   ");
+typewriter(11,23,100,stdscr,"                     ");
     //typewriter(11,37,50,stdscr,cadena);
     //typewriter(11,23,50,stdscr,"");
     //typewriter(12,23,50,stdscr,"estas seguro?");
@@ -344,7 +428,16 @@ typewriter(12,23,50,stdscr,"             ");
 typewriter(14,23,75,stdscr,"     ");
     //typewriter(14,26,50,stdscr,"NO");
 typewriter(15,23,75,stdscr,"     ");
-    refresh();
+
+typewriter(15,23,75,stdscr,"     ");
+
+typewriter(15,26,75,stdscr,"     ");
+
+typewriter(15,26,50,stdscr,"                   ");
+typewriter(16,10,25,stdscr,"                ");
+typewriter(16,40,25,stdscr,"                        ");
+typewriter(17,17,25,stdscr,"       ");
+refresh();
 }
 
 void historia(int key){
@@ -366,110 +459,11 @@ void historia(int key){
 
 }
 
-void nueva_partida(){
-    
-    echo();
-    char cadena[128];
-    typewriter(9,23,50,stdscr,"Cual es tu nombre? ");
-    move(10,23);
-    scanw("%[^\n]s",cadena);
-    typewriter(11,23,50,stdscr,"tu nombre es:");
-    typewriter(11,36,50,stdscr,cadena);
-    typewriter(12,23,50,stdscr,"estas seguro?");
-    typewriter(14,23,50,stdscr,"SI");
-    typewriter(14,26,50,stdscr,"NO");
-    refresh();
-    int key;
-    int x=1;
-    noecho();
-    keypad(stdscr,true);
-	mvwprintw(stdscr,15,23,"^");
-    do{
-            
-        key = getch();
-        refresh();
-        	
-        if(key == KEY_LEFT){
-            if(x==1)continue;
-            
-            x=1;
-            mvwprintw(stdscr,15,26," ");
-            
-            mvwprintw(stdscr,15,23,"^");
-            continue;
-        }
-        	
-        if(key == KEY_RIGHT){
-           
-            if(x==3)continue;
-            
-            x=3;
-            mvwprintw(stdscr,15,23," ");
-            mvwprintw(stdscr,15,26,"^");
-            continue;
-        }
-
-    }while(key != ENTER);
-	
-    if(x==3){//Volver a intentar o volver a el menu principal
-
-        mvwprintw(stdscr,15,26," ");
-        mvwprintw(stdscr,16,40,"volver al menu principal");
-        mvwprintw(stdscr,16,10,"volver a intentarlo");
-        mvwprintw(stdscr,17,17,"^");
-        
-        do{
-            key = getch();
-            refresh();
-        	
-            if(key == KEY_LEFT){
-                if(x==1)continue;
-            
-                x=1;    
-                mvwprintw(stdscr,17,52," ");
-            
-                mvwprintw(stdscr,17,17,"^");
-                continue;
-            }
-        	
-            if(key == KEY_RIGHT){
-           
-                if(x==2)continue;
-            
-                x=2;//volver al menu
-                mvwprintw(stdscr,17,17," ");
-                mvwprintw(stdscr,17,52,"^");
-                continue;
-            }
-        
-        }while(key !=ENTER);
-        
-        if(x==2){
-            clear();
-            menu_principal();
-        }
-        
-    }
-
-    clear();
-    bkgd(COLOR_PAIR(4));
-    return nueva_partida();
-    
-
-    ingresar(cadena);
-    jugador *player = crear_jugador(1,cadena,100,100);
-    borrarPantalla();
-    historia(key);
-    clear();
-    gameplay();
-    
-}
-
-int main(int argc, char ** argv){
+void main(){
     
     initscr();
     
-    int option=menu_principal();
+    int option = menu_principal();
      
     init_pair(4,COLOR_WHITE,COLOR_MAGENTA);
     clear();
@@ -488,15 +482,109 @@ int main(int argc, char ** argv){
         typewriter(10,10,50,stdscr,"CHEATS");
         break;
     default:
-        return 0;
+        return;
     }
     
     napms(2000);
-   
     refresh();
-   
     endwin();
+    return;
+}
 
-    return 0;
+void nueva_partida(){
+    
+    echo();
+    char cadena[128];
+    typewriter(9,23,50,stdscr,"Cual es tu nombre? ");
+    move(10,23);
+    scanw("%[^\n]s",cadena);
+    typewriter(11,23,50,stdscr,"tu nombre es:");
+    typewriter(11,36,50,stdscr,cadena);
+    typewriter(12,23,50,stdscr,"estas seguro?");
+    typewriter(14,23,50,stdscr,"SI");
+    typewriter(14,26,50,stdscr,"NO");
+    refresh();
+    int key=56;
+    int x = 56;
+    noecho();
+    keypad(stdscr,true);
+	mvwprintw(stdscr,15,23,"^");
 
+    do{
+            
+        key = getch();
+        refresh();
+        	
+        if(key == KEY_LEFT){//SI
+            if(x==1)continue;
+            x=1;
+            mvwprintw(stdscr,15,26," ");
+            mvwprintw(stdscr,15,23,"^");
+            continue;
+        }
+        	
+        if(key == KEY_RIGHT){//NO
+           
+            if(x==3)continue;
+            x=3;
+            mvwprintw(stdscr,15,23," ");
+            mvwprintw(stdscr,15,26,"^");
+            continue;
+        }
+
+    }while(key != ENTER);
+
+    key=839;
+	
+    if(x==3){//Volver a intentar o volver a el menu principal
+        x=4;
+        mvwprintw(stdscr,15,26," ");
+        mvwprintw(stdscr,16,40,"volver al menu principal");
+        mvwprintw(stdscr,16,10,"volver a intentarlo");
+        mvwprintw(stdscr,17,17,"^");
+        
+        do{
+            key = getch();
+            refresh();
+        	
+            if(key == KEY_LEFT){
+                if(x==4)continue;
+                x=4;    
+                mvwprintw(stdscr,17,52," ");
+            
+                mvwprintw(stdscr,17,17,"^");
+                continue;
+            }
+        	
+            if(key == KEY_RIGHT){
+           
+                if(x==2)continue;
+            
+                x=2;//volver al menu
+                mvwprintw(stdscr,17,17," ");
+                mvwprintw(stdscr,17,52,"^");
+                continue;
+            }
+        
+        }while(key !=ENTER && x != 58);
+        
+        if(x==2){
+            clear();
+            return main();   
+        }
+
+        if(x==4){
+            clear();
+            bkgd(COLOR_PAIR(4));
+            return nueva_partida();
+        }
+        
+    }
+
+    ingresar(cadena);
+    jugador *player = crear_jugador(1,cadena,100,100);
+    borrarPantalla();
+    historia(key);
+    clear();
+    gameplay();
 }
