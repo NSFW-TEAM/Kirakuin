@@ -14,7 +14,7 @@
 typedef struct level level;
 
 void nueva_partida(void);
-ALuint source,buffer;
+
 struct level{
     level *izq;
     level *der;
@@ -527,8 +527,7 @@ void canmove(int type,int y,int x,int* left,int* right,int* up,int* down){
     }
 }
 
-//Inicializa el gameplay del juego
-void gameplay(){
+void gameplay(jugador*player){//Inicializa el gameplay del juego
     int player_x = 10;
     int player_y = 9;
     int key;
@@ -546,7 +545,7 @@ void gameplay(){
     WINDOW * gamewin = newwin(22,108,1,5);//y,x,mover arriba,mover derecha
     wbkgd(gamewin,COLOR_PAIR(11));
     wbkgd(menuwin,COLOR_PAIR(11));
-    generate_map_type(gamewin,3); //generar tipo de mapa
+    generate_map_type(gamewin,player->level); //generar tipo de mapa
     box(menuwin,0,0);
     box(gamewin,0,0);
     print_player(gamewin,player_y,player_x,2);
@@ -556,7 +555,7 @@ void gameplay(){
     while(1){
         wrefresh(gamewin);
         wrefresh(menuwin);
-        canmove(3,player_y,player_x,&canmoveleft,&canmoveright,&canmoveup,&canmovedown);
+        canmove(player->level,player_y,player_x,&canmoveleft,&canmoveright,&canmoveup,&canmovedown);
         key = wgetch(gamewin);
         if(key==KEY_RIGHT){
             if(canmoveright==1){
@@ -604,7 +603,7 @@ int transformarAEntero(char *charNumero){
     return numero;
 }
 
-jugador *crearJugador(char *linea){
+jugador *crearJugador(char *linea){//retorna un jugador a partir del archivo.txt
 
     jugador *j = (jugador *) malloc(sizeof(jugador)); // Asigna memoria a todo la struct
 
@@ -719,24 +718,10 @@ void ingresar(char *nombre){
     fputs(",", nuevoJugador);
     fputs("100", nuevoJugador);
     fputs(",", nuevoJugador);
-    fputs("1", nuevoJugador);
+    fputs("0", nuevoJugador);
     fputs("\n", nuevoJugador);
     fclose(nuevoJugador);
 }
-
-/*void ingresar(char *nombre){
-    char *name=nombre;
-    FILE *nuevoJugador = fopen("jugadores.txt", "a");
-    fputs(nombre,nuevoJugador);
-    fputc(',', nuevoJugador);
-    fputs("100", nuevoJugador);
-    fputc(',', nuevoJugador);
-    fputs("100", nuevoJugador);
-    fputc(',', nuevoJugador);
-    fputs("1", nuevoJugador);
-    fputs("\n", nuevoJugador);
-    fclose(nuevoJugador);
-}*/
 
 void borrarPantalla(){
 
@@ -910,6 +895,7 @@ void mostrar(){
         refresh();
         napms(500);
         termino=true;
+        gameplay(player);
     }
     else{
         
@@ -973,8 +959,8 @@ void mostrar(){
     }
     
     }
-
-    gameplay();
+    
+    
 
 
 }
@@ -1104,10 +1090,9 @@ void nueva_partida(){
     }
 
     ingresar(cadena);
-    //jugador *player = crearJugador(cadena);
     jugador *player = cargarJugador(cadena);
     borrarPantalla();
     historia(key);
     clear();
-    gameplay();
+    gameplay(player);
 }
