@@ -624,6 +624,9 @@ void typewriter(int x, int y, int velocidad, WINDOW* ventana, char* text){
 }
 
 void showtitle(int x, int y, int velocidad){
+    attroff(A_BOLD);
+    attrset(A_BOLD);
+    x=x+28;
     typewriter(y,x,velocidad,stdscr,"==================================================================================");
     typewriter(y+1,x,velocidad,stdscr,"-@@@---@@@@-@@@@@@-@@@@@@@-------@@@@----@@@---@@@@-@@@@----@@@@-@@@@@@-@@-----@@-");
     typewriter(y+2,x,velocidad,stdscr,"--@@--@@@-----@@----@@---@@-----@@--@@----@@--@@@----@@------@@----@@---@@@@---@@-");
@@ -768,6 +771,28 @@ void historia(int key){
 
 }
 
+int numero_jugadores(){
+
+    FILE *contar= fopen("jugadores.txt", "r");
+    int acum=0;
+    char linea[1024];
+    
+    if(contar == NULL)
+    {
+        printw("NO SE PUDO ABRIR EL ARCHIVO");
+    }
+
+    while(fgets (linea,1023,contar)!=NULL){
+
+        char *nombre=(get_csv_field(linea, 1));
+        int atk = atoi(get_csv_field(linea,2));
+        int dfs = atoi(get_csv_field(linea,3));
+        int level = atoi(get_csv_field(linea, 4));
+        acum++;
+    }
+    return acum;
+}
+
 jugador *cargarJugador(char *nombre){
 
     jugador *j;
@@ -775,7 +800,7 @@ jugador *cargarJugador(char *nombre){
     FILE *cargar= fopen("jugadores.txt", "r");
     if(cargar == NULL)
     {
-        printf("NO SE PUDO ABRIR EL ARCHIVO");
+        printw("NO SE PUDO ABRIR EL ARCHIVO");
     }
 
     char linea[101];
@@ -975,8 +1000,7 @@ void main(){
     switch (option)
     {
     case 1:
-        clear();
-        bkgd(COLOR_PAIR(4));
+        
         nueva_partida();
         //typewriter(10,10,50,stdscr,"Nueva Partida");
         /* code */
@@ -1000,7 +1024,18 @@ void main(){
 }
 
 void nueva_partida(){
-    
+    //Caso vase    
+    if(numero_jugadores()==4){
+        attroff(A_BOLD);
+        attrset(A_BOLD);
+
+     typewriter(31,30,5,stdscr,"Hay demasiados jugadores");
+     getch();   
+    }
+
+    clear();
+    bkgd(COLOR_PAIR(4));
+
     echo();
     char cadena[128];
     typewriter(9,23,50,stdscr,"Cual es tu nombre? ");
