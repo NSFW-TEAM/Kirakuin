@@ -12,31 +12,9 @@
 #define MINIMO 11111111
 #define ESPACIO 20
 typedef struct level level;
+typedef struct list list;
 
 void nueva_partida(void);
-
-struct level{
-    level *izq;
-    level *der;
-    level *up;
-    level *dwn;
-    int recorrido;
-    int enemigo;
-    int cofre;
-    int id;
-};
-
-typedef struct mapa{
-    level * root;
-    level  * current;
-}Mapa;
-
-typedef struct jugador{
-    int dfs;
-    int atk;
-    char * nombre;
-    int level;
-}jugador;
 
 typedef struct enemigo{
     int prt;
@@ -44,18 +22,66 @@ typedef struct enemigo{
     char *nombre;
 }enemigo;
 
+struct level{
+    level *izq;
+    level *der;
+    level *up;
+    level *dwn;
+    int recorrido;
+    enemigo *rival;
+    int cofre;
+    int id;
+};
+
+typedef struct mapa{
+    level * root;
+    level  * current;
+    list * camino;
+}Mapa;
+
+typedef struct jugador{
+    int dfs;
+    int atk;
+    char * nombre;
+    int nivel;
+}jugador;
+
+typedef struct list{
+    list * current;
+    list * next;
+    list * prev;
+}list;
+
+list* create_list(){
+    list *newList = (list * )malloc (sizeof (list));
+    newList->current=NULL;
+    newList->next = NULL;
+    newList->prev = NULL;
+    return newList;
+}
+
+Mapa* create_mapa(){
+    Mapa *newMap = (Mapa * )malloc (sizeof (Mapa));
+    newMap->root=NULL;
+    newMap->current = NULL;
+    newMap->camino=create_list();
+    return newMap;
+}
+
 level * create_node(int id) {
     level *new = (level * )malloc (sizeof (level));
-    assert (new != NULL); // No hay memoria para reservar la Lista.
+    //assert (new != NULL); // No hay memoria para reservar la Lista.
+    
     new->izq=NULL;
     new->der=NULL;
     new->up=NULL;
     new->dwn=NULL;
-    new->enemigo=1;
+    new->rival=NULL;
     new->recorrido=0;
     new->cofre=0;
     new->id=id;
     return new;
+    
 }
 
 char * _strdup (const char *s) {
@@ -527,7 +553,70 @@ void canmove(int type,int y,int x,int* left,int* right,int* up,int* down){
     }
 }
 
-void gameplay(jugador*player){//Inicializa el gameplay del juego
+int lista_ad(level* nodo,char *salida){
+    __time_t t;
+    int aux;
+    srand((unsigned) time(&t));
+    
+    if(strcmp(salida,"derecha")==0){
+        
+        while(1){
+            
+            aux=(rand() % 7);
+
+            if(aux==2 || aux==7 || aux == 0 || nodo->id == aux){
+                continue;
+            }
+
+            return aux;
+        }
+    }
+
+    if(strcmp(salida,"izquierda")==0){
+        
+        while(1){
+            
+            aux=(rand() % 7);
+
+            if(aux==1 || aux==7 || aux == 0 || nodo->id == aux){
+                continue;
+            }
+
+            return aux;
+        }
+    }
+
+    if(strcmp(salida,"abajo")==0){
+        
+        while(1){
+            
+            aux=(rand() % 7);
+
+            if(aux==6 || aux==4 || aux == 0 || nodo->id == aux){
+                continue;
+            }
+
+            return aux;
+        }
+    }
+
+    if(strcmp(salida,"arriba")==0){
+        
+        while(1){
+            
+            aux=(rand() % 7);
+
+            if(aux==3 || aux==6 || aux == 0 || nodo->id == aux){
+                continue;
+            }
+
+            return aux;
+        }
+    }
+
+}
+
+void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del juego
     int player_x = 10;
     int player_y = 9;
     int key;
@@ -545,7 +634,7 @@ void gameplay(jugador*player){//Inicializa el gameplay del juego
     WINDOW * gamewin = newwin(22,108,1,5);//y,x,mover arriba,mover derecha
     wbkgd(gamewin,COLOR_PAIR(11));
     wbkgd(menuwin,COLOR_PAIR(11));
-    generate_map_type(gamewin,player->level); //generar tipo de mapa
+    generate_map_type(gamewin,nivel->id); //generar tipo de mapa
     box(menuwin,0,0);
     box(gamewin,0,0);
     print_player(gamewin,player_y,player_x,2);
@@ -555,10 +644,22 @@ void gameplay(jugador*player){//Inicializa el gameplay del juego
     while(1){
         wrefresh(gamewin);
         wrefresh(menuwin);
-        canmove(player->level,player_y,player_x,&canmoveleft,&canmoveright,&canmoveup,&canmovedown);
+        ///
+        //mvwprintw(gamewin,1,1,"%i",nivel->id);
+        //mvwprintw(gamewin,1,3,"%i",nivel->izq->id);
+        if(h!=0){
+            //mvwprintw(gamewin,2,1,"%i",nivel->izq->id);
+        }
+        
+        //mvwprintw(gamewin,3,1,"%i",nivel->izq->id);
+        
+
+        canmove(nivel->id,player_y,player_x,&canmoveleft,&canmoveright,&canmoveup,&canmovedown);
         key = wgetch(gamewin);
         if(key==KEY_RIGHT){
+
             if(canmoveright==1){
+                
                 vanish_player(gamewin,player_y,player_x);
                 player_x+=1;
                 print_player(gamewin,player_y,player_x,2);
@@ -586,7 +687,101 @@ void gameplay(jugador*player){//Inicializa el gameplay del juego
                 }
         }
 
+        if(player_x==102){//derecha
+
+            jugador* aux=create_node(nivel->id);
+            
+            if(nivel->der!=NULL){
+                
+                nivel->izq=aux;
+                nivel=nivel->der;
+                nivel->der=NULL;
+                player->nivel=nivel->id;
+                gameplay(player,nivel,0);
+            }
+            
+            int type=lista_ad(nivel,"derecha");
+            
+            nivel->der = create_node(type);
+            
+            nivel=nivel->der;
+            player->nivel=nivel->id;
+            nivel->izq=aux;
+            
+            wrefresh(gamewin);
+            gameplay(player,nivel,0);
+        }
+
+        if(player_x==1){//izquierda
+            //
+            jugador* aux=create_node(nivel->id);
+
+            if(nivel->izq!=NULL){
+                //si ya se recorrio antes el izquierdo 
+                nivel->der=aux;
+                //el derecho
+                nivel = nivel->izq;
+                //el izquierdo pasa a ser el actual
+                nivel->izq=NULL;
+                player->nivel=nivel->id;
+                gameplay(player,nivel,0);
+            }
+            
+            int type=lista_ad(nivel,"izquierda");
+            nivel->izq = create_node(type);
+            nivel=nivel->izq;
+            player->nivel=nivel->id;
+            nivel->der=aux;
+            wrefresh(gamewin);
+            gameplay(player,nivel,0);
+
+            /*nivel->id=lista_ad(nivel,"izquierda");
+            gameplay(player,nivel,h++);*/
+        }
+
+        if(player_y==1){//arriba
+            jugador* aux = create_node(nivel->id);
+            if(nivel->up!=NULL){
+                nivel->dwn=aux;
+                nivel = nivel->up;
+                nivel->up=NULL;
+                player->nivel=nivel->id;
+                gameplay(player,nivel,0);
+            }
+
+            int type=lista_ad(nivel,"arriba");
+            nivel->up=create_node(type);
+            nivel=nivel->up;
+            player->nivel=nivel->id;
+            nivel->dwn=aux;
+            wrefresh(gamewin);
+            gameplay(player,nivel,h++);
+
+        }
+
+        if(player_y==16){//abajo
+            jugador* aux = create_node(nivel->id);
+            if(nivel->dwn!=NULL){
+                nivel->up=aux;
+                nivel = nivel->dwn;
+                nivel->dwn=NULL;
+                player->nivel=nivel->id;
+                gameplay(player,nivel,0);
+            }
+
+            int type=lista_ad(nivel,"abajo");
+            nivel->dwn=create_node(type);
+            nivel=nivel->dwn;
+            player->nivel=nivel->id;
+            nivel->up=aux;
+            wrefresh(gamewin);
+            gameplay(player,nivel,h++);
+        }
+
     }
+
+    
+
     wrefresh(gamewin);
     wrefresh(menuwin);
     keypad(menuwin,true);
@@ -610,7 +805,7 @@ jugador *crearJugador(char *linea){//retorna un jugador a partir del archivo.txt
     j->nombre = get_csv_field(linea, 1);
     j->dfs = transformarAEntero(get_csv_field(linea,2));
     j->atk = transformarAEntero(get_csv_field(linea,3));
-    j->level = transformarAEntero(get_csv_field(linea,4));
+    j->nivel = transformarAEntero(get_csv_field(linea,4));
     return j;
 }
 
@@ -850,6 +1045,8 @@ void mostrar(){
         vector[acum]=p->nombre;
         acum++;
         typewriter(y,100,50,stdscr,p->nombre);
+        //int espacios=strlen(p->nombre);
+        //typewriter(y,100+espacios,50,stdscr," xd");
         y++;
     }
 
@@ -909,18 +1106,23 @@ void mostrar(){
     if(vector[y-31] != "vacio"){
         jugador* player= cargarJugador(vector[y-31]);
         no_elegible();
+        int espacios = strlen(player->nombre);
         mvwprintw(stdscr,31,97,player->nombre);
-        mvwprintw(stdscr,32,97,"join the party :)");
+        mvwprintw(stdscr,31,97+espacios," join the party :)");
         refresh();
         napms(500);
-        mvwprintw(stdscr,32,97,"join the party ;)");
+        mvwprintw(stdscr,31,97+espacios," join the party ;)");
         refresh();
         napms(500);
-        mvwprintw(stdscr,32,97,"join the party :)");
+        mvwprintw(stdscr,31,97+espacios," join the party :)");
         refresh();
         napms(500);
         termino=true;
-        gameplay(player);
+        //Mapa* map=create_mapa();
+        //map->camino=create_list();
+        
+        level * nivel= create_node(player->nivel);
+        gameplay(player,nivel,0);
     }
     else{
         
@@ -1025,12 +1227,13 @@ void main(){
 
 void nueva_partida(){
     //Caso vase    
-    if(numero_jugadores()==4){
+    if(numero_jugadores()>=4){
         attroff(A_BOLD);
         attrset(A_BOLD);
 
      typewriter(31,30,5,stdscr,"Hay demasiados jugadores");
-     getch();   
+     getch();
+        
     }
 
     clear();
@@ -1126,8 +1329,10 @@ void nueva_partida(){
 
     ingresar(cadena);
     jugador *player = cargarJugador(cadena);
+    level* nivel = create_node(0);
+    //Mapa *map = create_mapa();
     borrarPantalla();
     historia(key);
     clear();
-    gameplay(player);
+    gameplay(player,nivel,0);
 }
