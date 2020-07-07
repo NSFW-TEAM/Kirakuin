@@ -553,6 +553,74 @@ void canmove(int type,int y,int x,int* left,int* right,int* up,int* down){
     }
 }
 
+void flush_menu(WINDOW* menuwin){
+    int i,j;
+    for(i=1;i<5;i++){
+        for(j=1;j<107;j++){
+            mvwprintw(menuwin,i,j," ");
+        }
+    }
+    wrefresh(menuwin);
+    return;
+}
+
+//funcion que imprime el item deseado
+void print_item(int contenido,int* item_pick,int key,WINDOW* menuwin,WINDOW* itemwin,int item_y,int item_x,int player_y,int player_x){
+    int x = item_x;
+    int y = item_y;
+    init_pair(3,COLOR_BLACK,COLOR_BLUE);
+    init_pair(4,COLOR_BLACK,COLOR_BLACK);
+    wbkgd(itemwin,COLOR_PAIR(3));
+    if(*item_pick==0){ //si el item no ha sido recogido
+        mvwprintw(itemwin,0,0,"[[]]");
+        mvwprintw(itemwin,1,0,"[__]");
+        wrefresh(itemwin);
+        if((x>player_x && x<player_x+11)&&(y>player_y-1 && y<player_y+7)){ //si el jugador esta cerca del item
+            flush_menu(menuwin);
+            mvwprintw(menuwin,2,2,"Aqui hay un cofre...");
+            mvwprintw(menuwin,3,2,"Presiona ENTER para abrirlo.");
+            if(key==ENTER){ //si el jugador presiona ENTER estando cerca del item
+                flush_menu(menuwin);
+                if(contenido==0){ //si el contenido es 0 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 0 (+10 ATK)");
+                }
+                if(contenido==1){ //si el contenido es 1 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 1 (+10 DEF)");
+                }
+                if(contenido==2){ //si el contenido es 2 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 2 (+20 ATK)");
+                }
+                if(contenido==3){ //si el contenido es 3 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 3 (+20 DEF)");
+                }
+                if(contenido==4){ //si el contenido es 4 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 4 (+20 DEF)");
+                }
+                if(contenido==5){ //si el contenido es 5 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 5 (+30 DEF)");
+                }
+                if(contenido==6){ //si el contenido es 6 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 6 (+40 ATK)");
+                }
+                if(contenido==7){ //si el contenido es 7 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 7 (+40 DEF)");
+                }
+                if(contenido==8){ //si el contenido es 8 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 8 (+50 ATK)");
+                }
+                if(contenido==9){ //si el contenido es 9 hacer esto
+                    mvwprintw(menuwin,2,2,"ITEM 9 (+50 DEF)");
+                }
+                wbkgd(itemwin,COLOR_PAIR(4)); //borrar item de la pantalla
+                wrefresh(itemwin);
+                *item_pick=1; //marcar como item recogido
+            }
+        }else{
+            flush_menu(menuwin); //si el jugador deja de estar cerca limpiar el menu
+        }
+    }
+}
+
 int lista_ad(level* nodo,char *salida){
     __time_t t;
     int aux;
@@ -619,6 +687,10 @@ int lista_ad(level* nodo,char *salida){
 void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del juego
     int player_x = 10;
     int player_y = 9;
+    int item_x = 50;
+    int item_y =  4;
+    int item_pick = 0;
+    int item_content = 0;
     int key;
     int i;
     int canmoveleft,canmoveright,canmoveup,canmovedown;
@@ -626,14 +698,14 @@ void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del ju
     noecho();
     cbreak();
     start_color();
-    init_pair(11,COLOR_RED,COLOR_BLACK);
-    bkgd(COLOR_PAIR(10));
+    init_pair(1,COLOR_RED,COLOR_BLACK);
+    init_pair(2,COLOR_BLACK,COLOR_BLUE);
     int yMax , xMax;
     getmaxyx(stdscr, yMax , xMax);
     WINDOW * menuwin = newwin(6, 108,24, 5);
     WINDOW * gamewin = newwin(22,108,1,5);//y,x,mover arriba,mover derecha
-    wbkgd(gamewin,COLOR_PAIR(11));
-    wbkgd(menuwin,COLOR_PAIR(11));
+    wbkgd(gamewin,COLOR_PAIR(1));
+    wbkgd(menuwin,COLOR_PAIR(1));
     generate_map_type(gamewin,nivel->id); //generar tipo de mapa
     box(menuwin,0,0);
     box(gamewin,0,0);
@@ -644,15 +716,14 @@ void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del ju
     while(1){
         wrefresh(gamewin);
         wrefresh(menuwin);
-        ///
+        wrefresh(itemwin);
+        ///Esto es para controlar las weaitas
         //mvwprintw(gamewin,1,1,"%i",nivel->id);
         //mvwprintw(gamewin,1,3,"%i",nivel->izq->id);
         if(h!=0){
             //mvwprintw(gamewin,2,1,"%i",nivel->izq->id);
         }
-        
         //mvwprintw(gamewin,3,1,"%i",nivel->izq->id);
-        
 
         canmove(nivel->id,player_y,player_x,&canmoveleft,&canmoveright,&canmoveup,&canmovedown);
         key = wgetch(gamewin);
@@ -686,6 +757,10 @@ void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del ju
                     print_player(gamewin,player_y,player_x,1);
                 }
         }
+        if(item_pick == 0){
+            print_item(item_content,&item_pick,key,menuwin,itemwin,item_y,item_x,player_y,player_x);
+        }
+        mvwprintw(menuwin,4,95,"Y=%i, X=%i",player_y,player_x);
 
         if(player_x==102){//derecha
 
@@ -779,9 +854,7 @@ void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del ju
         }
 
     }
-
     
-
     wrefresh(gamewin);
     wrefresh(menuwin);
     keypad(menuwin,true);
@@ -923,11 +996,9 @@ void ingresar(char *nombre){
 
 void borrarPantalla(){
 
-//typewriter(9,23,50,stdscr,"Cual es tu nombre? ");
 typewriter(9,23,50,stdscr,"                   ");
 typewriter(10,23,50,stdscr,"                        ");
-//typewriter(11,23,50,stdscr,"tu nombre es: ");
-typewriter(11,23,100,stdscr,"                     ");
+typewriter(11,23,75,stdscr,"                     ");
     //typewriter(11,37,50,stdscr,cadena);
     //typewriter(11,23,50,stdscr,"");
     //typewriter(12,23,50,stdscr,"estas seguro?");
