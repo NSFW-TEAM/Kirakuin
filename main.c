@@ -568,7 +568,7 @@ void flush_menu(WINDOW* menuwin){
 void print_item(int contenido,int* item_pick,int key,WINDOW* menuwin,WINDOW* itemwin,int item_y,int item_x,int player_y,int player_x){
     int x = item_x;
     int y = item_y;
-    init_pair(3,COLOR_BLACK,COLOR_BLUE);
+    init_pair(3,COLOR_BLUE,COLOR_BLACK);
     init_pair(4,COLOR_BLACK,COLOR_BLACK);
     wbkgd(itemwin,COLOR_PAIR(3));
     if(*item_pick==0){ //si el item no ha sido recogido
@@ -685,6 +685,9 @@ int lista_ad(level* nodo,char *salida){
 }
 
 void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del juego
+    
+    
+     
     int player_x = 10;
     int player_y = 9;
     int item_x = 50;
@@ -699,11 +702,12 @@ void gameplay(jugador*player,level* nivel,int h){//Inicializa el gameplay del ju
     cbreak();
     start_color();
     init_pair(1,COLOR_RED,COLOR_BLACK);
-    init_pair(2,COLOR_BLACK,COLOR_BLUE);
+    init_pair(2,COLOR_BLUE,COLOR_BLACK);
     int yMax , xMax;
     getmaxyx(stdscr, yMax , xMax);
     WINDOW * menuwin = newwin(6, 108,24, 5);
     WINDOW * gamewin = newwin(22,108,1,5);//y,x,mover arriba,mover derecha
+    WINDOW* itemwin = newwin(2,4,item_y,item_x);
     wbkgd(gamewin,COLOR_PAIR(1));
     wbkgd(menuwin,COLOR_PAIR(1));
     generate_map_type(gamewin,nivel->id); //generar tipo de mapa
@@ -1193,6 +1197,7 @@ void mostrar(){
         //map->camino=create_list();
         
         level * nivel= create_node(player->nivel);
+        clear();
         gameplay(player,nivel,0);
     }
     else{
