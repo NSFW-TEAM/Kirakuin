@@ -14,13 +14,18 @@
 #define MINIMO 11111111
 #define ESPACIO 20
 #define ESC 27
+void nueva_partida(void);
+
+//ESTRUCTURAS//
+
 typedef struct level level;
 typedef struct list list;
-void nueva_partida(void);
+typedef struct jugador jugador;
 
 typedef struct enemigo{
     int dfs;
     int atk;
+    int HP;
 }enemigo;
 
 struct level{
@@ -40,33 +45,42 @@ typedef struct mapa{
     list * camino;
 }Mapa;
 
-typedef struct jugador{
+struct jugador{
     int dfs;
     int atk;
     char * nombre;
     int nivel;
-}jugador;
+    int HP;
+    jugador*next;
+    jugador*prev;
+};
 
 typedef struct list{
-    list * current;
-    list * next;
-    list * prev;
+    jugador * current;
+    jugador * next;
+    jugador * prev;
 }list;
+
+//ESTRUCTURAS//
+
+
+
+//CREACION DE ESTRUCTURAS Y MANEJO DE ARCHIVOS//
 
 enemigo* create_enemy(int type){
 
-enemigo* new_enemy= (enemigo*) malloc(sizeof(enemigo));
+    enemigo* new_enemy= (enemigo*) malloc(sizeof(enemigo));
 
-if(type==5){
+    if(type==5){
 
     new_enemy->dfs=10;
     new_enemy->atk=50;
 }
 
-new_enemy->dfs=10;
-new_enemy->atk=50;
+    new_enemy->dfs=10;
+    new_enemy->atk=50;
 
-return new_enemy;
+    return new_enemy;
 
 }
 
@@ -120,7 +134,74 @@ const char *get_csv_field (char * tmp, int i) {
     return NULL;
 }
 
-void print_player(WINDOW* ventana,int y,int x, int dir){
+jugador* crearJugador(char *linea){//retorna un jugador a partir del archivo.txt
+    jugador *j = (jugador *) malloc(sizeof(jugador)); // Asigna memoria a todo la struct
+    j->nombre = get_csv_field(linea, 1);
+    j->dfs = transformarAEntero(get_csv_field(linea,2));
+    j->atk = transformarAEntero(get_csv_field(linea,3));
+    j->nivel = transformarAEntero(get_csv_field(linea,4));
+    j->prev=NULL;
+    j->next=NULL;
+    return j;
+}
+
+jugador *crearJugadorVacio(char *name){//retorna un jugador
+    jugador *j = (jugador *) malloc(sizeof(jugador)); // Asigna memoria a todo la struct
+    j->nombre = name;
+    j->dfs =100;
+    j->atk = 100;
+    j->nivel = 0;
+    j->prev=NULL;
+    j->next=NULL;
+    return j;
+}
+
+//CREACION DE ESTRUCTURAS Y MANEJO DE ARCHIVOS//
+
+
+
+//APARTADO GRAFICO Y MENUS//
+
+void menu_jugadores(){//Muestra los jugadores disponibles en la standar screen
+
+    FILE * archivo = fopen("jugadores.txt","r");
+    
+    if(archivo == NULL){
+        mvwprintw(stdscr,20,43,"NO EXISTEN PARTIDAS GUARDADAS");
+        main();
+    }
+
+    int y=24;//RANDOM NUMBER
+    jugador *p;
+    char linea[101];
+    int acum=0;
+    char** vector[4];
+    while(fgets(linea,100,archivo)!=NULL){
+        if(acum==4){
+            fclose(archivo);
+            getch();
+        }
+        p = crearJugador(linea);
+        vector[acum]=p->nombre;
+        acum++;
+        typewriter(y,100,50,stdscr,p->nombre);
+        y++;
+    }
+
+    fclose(archivo);
+
+}
+
+void typewriter(int x, int y, int velocidad, WINDOW* ventana, char* text){//Maquina de escribir
+    int i;
+    for(i=0;i<strlen(text);i++){
+        mvprintw(x,y+i,"%c",text[i]);
+        wrefresh(ventana);
+        napms(velocidad);
+    }
+}
+
+void print_player(WINDOW* ventana,int y,int x, int dir){//Dibuja al jugador en el mapa
     if(dir==0){
     mvwprintw(ventana,y,x," ,,, ");
     mvwprintw(ventana,y+1,x,"('' )");
@@ -160,7 +241,7 @@ void pause_erase(WINDOW* pausewin){//borra el menu de pausa
     wrefresh(pausewin);
 }
 
-int Escape(){
+int Escape(){//Funcion encargada del menu de pausa
     beep();
     init_pair(8,COLOR_BLUE,COLOR_BLACK);
     WINDOW* pausewin = newwin(3,12,25,54);
@@ -208,11 +289,9 @@ int Escape(){
 
 
     return y+1;
-
-
 }
 
-void vanish_player(WINDOW* ventana, int y, int x){
+void vanish_player(WINDOW* ventana, int y, int x){//Elimina el rastro del jugador
     mvwprintw(ventana,y,x,"     ");
     mvwprintw(ventana,y+1,x,"     ");
     mvwprintw(ventana,y+2,x,"     ");
@@ -220,7 +299,7 @@ void vanish_player(WINDOW* ventana, int y, int x){
     mvwprintw(ventana,y+4,x,"     ");
 }
 
-void generate_map_type(WINDOW* ventana,int type){
+void generate_map_type(WINDOW* ventana,int type){//Dibuja el mapa segun el tipo del nodo actual
     int i,j;
     if(type==0){ //tipo de nivel inicial
         for(i=1;i<=106;i++){
@@ -451,7 +530,7 @@ void generate_map_type(WINDOW* ventana,int type){
             }
         }
     }
-    if(type==666){
+    if(type==666){///BOSS FIGTH
         for(i=1;i<=120;i+=18){
             mvwprintw(ventana,19,i,"^/\\/\\^^^/\\^^/\\/\\/\\");
             mvwprintw(ventana,20,i,"^^/\\^/\\/\\/\\^^/\\^^^/\\");
@@ -461,7 +540,7 @@ void generate_map_type(WINDOW* ventana,int type){
     return;
 }
 
-void canmove(int type,int y,int x,int* left,int* right,int* up,int* down){
+void canmove(int type,int y,int x,int* left,int* right,int* up,int* down){//Colisiones del juego
     if(type==0){
         if(x<102){
             *right = 1;
@@ -662,7 +741,7 @@ void canmove(int type,int y,int x,int* left,int* right,int* up,int* down){
     }
 }
 
-void flush_menu(WINDOW* menuwin){
+void flush_menu(WINDOW* menuwin){//Borra el rastro del menu 
     int i,j;
     for(i=1;i<5;i++){
         for(j=1;j<107;j++){
@@ -673,7 +752,7 @@ void flush_menu(WINDOW* menuwin){
     return;
 }
 
-void flush_dialog(WINDOW* menuwin){
+void flush_dialog(WINDOW* menuwin){//borra el rastro del dialogo enemigo
     int i,j;
     for(i=2;i<5;i++){
         for(j=1;j<107;j++){
@@ -684,7 +763,7 @@ void flush_dialog(WINDOW* menuwin){
     return;
 }
 
-void det_pos(int * player_x , int * player_y , int x_before, int y_before,level*  nivel){
+void det_pos(int * player_x , int * player_y , int x_before, int y_before,level*  nivel){//Determina la posicion inicial del jugador
 
     if(nivel->id==0){
         *player_y=9;
@@ -781,7 +860,7 @@ void det_pos(int * player_x , int * player_y , int x_before, int y_before,level*
 
 }
 
-bool sorteo_cofre(level* nivel){
+bool sorteo_cofre(level* nivel){//Define si existe o no un cofre en el nivel
     if(nivel->id==7)return false;
     int t;
     int aux;
@@ -794,12 +873,16 @@ bool sorteo_cofre(level* nivel){
     return false;
 }
 
-int sorteo_type(){
-return 5;
+int sorteo_type(){//Sortea el tipo de enemigo a enfrentar
+    int t;
+    int aux;
+    srand((unsigned) time(&t));
+
+    aux=(rand() % 6);
+    return aux;
 }
 
-
-bool sorteo_enemy(level*nivel){
+bool sorteo_enemy(level*nivel){//Define si existe o no un enemigo en el nivel
     if(nivel->id==7 || nivel->id==0)return false;
 
     int t;
@@ -814,7 +897,7 @@ bool sorteo_enemy(level*nivel){
 
 }
 
-void det_cofrexy(int *item_x,int *item_y,level* nivel,int x , int y){
+void det_cofrexy(int *item_x,int *item_y,level* nivel,int x , int y){//Determina la posicion del cofre en el nivel
     *item_y=9;
     *item_x=54;
 
@@ -1585,6 +1668,69 @@ void print_boss(WINDOW* bosswin,int y, int x){
     wrefresh(bosswin);
 }
 
+int transformarAEntero(char *charNumero){
+    int largo = strlen(charNumero);
+    int numero = 0;
+    for(int i=0;i<largo;i++){
+        numero=(charNumero[i]-48)+(numero*10);
+    }
+    return numero;
+}
+
+void showtitle(int x, int y, int velocidad){
+    attroff(A_BOLD);
+    attrset(A_BOLD);
+    typewriter(y,x,velocidad,stdscr,"==================================================================================");
+    typewriter(y+1,x,velocidad,stdscr,"-@@@---@@@@-@@@@@@-@@@@@@@-------@@@@----@@@---@@@@-@@@@----@@@@-@@@@@@-@@-----@@-");
+    typewriter(y+2,x,velocidad,stdscr,"--@@--@@@-----@@----@@---@@-----@@--@@----@@--@@@----@@------@@----@@---@@@@---@@-");
+    typewriter(y+3,x,velocidad,stdscr,"--@@-@@@------@@----@@---@@----@@----@@---@@-@@@-----@@------@@----@@---@@-@@--@@-");
+    typewriter(y+4,x,velocidad,stdscr,"--@@@@@-------@@----@@@@@@-----@@@@@@@@---@@@@@------@@------@@----@@---@@--@@-@@-");
+    typewriter(y+5,x,velocidad,stdscr,"--@@-@@@------@@----@@--@@-----@@----@@---@@-@@@-----@@------@@----@@---@@---@@@@-");
+    typewriter(y+6,x,velocidad,stdscr,"--@@--@@@-----@@----@@---@@----@@----@@---@@--@@@----@@@----@@@----@@---@@----@@@-");
+    typewriter(y+7,x,velocidad,stdscr,"-@@@---@@@@-@@@@@@--@@----@@@-@@------@@-@@@---@@@@----@@@@@@----@@@@@@-@@-----@@-");
+    typewriter(y+8,x,velocidad,stdscr,"==================================================================================");
+}
+
+void historia(int key){
+    keypad(stdscr,true);
+    do{
+        typewriter(4,40,50,stdscr,"Erase");
+        typewriter(5,40,50,stdscr,"una");
+        typewriter(6,40,50,stdscr,"vez");
+        typewriter(7,40,50,stdscr,"un");
+        typewriter(8,40,50,stdscr,"joven");
+        typewriter(9,40,50,stdscr,"que");
+        typewriter(10,40,50,stdscr,"perdio");
+        typewriter(11,40,50,stdscr,"su alma");
+        typewriter(13,40,50,stdscr,"FIN");
+        napms(1000);
+        return;
+    }while((key=getch())!= ESPACIO);
+}
+
+void borrarPantalla(){
+typewriter(8,40,20,stdscr,"                                          ");
+typewriter(10,40,20,stdscr,"                                          ");
+typewriter(12,40,20,stdscr,"                                          ");
+typewriter(14,40,20,stdscr,"                                          ");
+typewriter(16,40,20,stdscr,"                                          ");
+typewriter(17,23,20,stdscr,"                                          ");
+refresh();
+}
+
+void no_elegible(){//Borra el espacio necesario en el menu principal
+    typewriter(31,97,5,stdscr,"                                  ");
+    typewriter(32,97,5,stdscr,"                                  ");
+    typewriter(33,97,5,stdscr,"                                  ");
+    typewriter(34,97,5,stdscr,"                                  ");
+}
+ 
+//APARTADO GRAFICO Y MENUS//
+
+
+
+//FUNCIONES PRINCIPALES// 
+                                            
 int lista_ad(level* nodo,char *salida){
     //__time_t /linux 
     int t;
@@ -1681,8 +1827,8 @@ void gameplay(jugador*player,level* nivel, int h, int x_before, int y_before){//
         
         enemy_x = 63;
         enemy_y = 9;
-        enemy_type = 5;
-        //enemy_type=sorteo_type();
+        
+        enemy_type=sorteo_type();
         nivel->rival = create_enemy(enemy_type);
     }
     
@@ -1783,7 +1929,7 @@ void gameplay(jugador*player,level* nivel, int h, int x_before, int y_before){//
         }
         //DEBUG: mvwprintw(menuwin,4,95,"Y=%i, X=%i",player_y,player_x);
         if(player_x==102){//derecha
-            jugador* aux=create_node(nivel->id);
+            level* aux=create_node(nivel->id);
             if(nivel->der!=NULL){
                 nivel->izq=aux;
                 nivel=nivel->der;
@@ -1800,7 +1946,7 @@ void gameplay(jugador*player,level* nivel, int h, int x_before, int y_before){//
             gameplay(player,nivel,0,player_x,player_y);
         }
         if(player_x==1){//izquierda
-            jugador* aux=create_node(nivel->id);
+            level* aux=create_node(nivel->id);
             if(nivel->izq!=NULL){
                 //si ya se recorrio antes el izquierdo
                 nivel->der=aux;
@@ -1822,7 +1968,7 @@ void gameplay(jugador*player,level* nivel, int h, int x_before, int y_before){//
             gameplay(player,nivel,h++);*/
         }
         if(player_y==1){//arriba
-            jugador* aux = create_node(nivel->id);
+            level* aux = create_node(nivel->id);
             if(nivel->up!=NULL){
                 nivel->dwn=aux;
                 nivel = nivel->up;
@@ -1839,7 +1985,7 @@ void gameplay(jugador*player,level* nivel, int h, int x_before, int y_before){//
             gameplay(player,nivel,h++,player_x,player_y);
         }
         if(player_y==16){//abajo
-            jugador* aux = create_node(nivel->id);
+            level* aux = create_node(nivel->id);
             if(nivel->dwn!=NULL){
                 nivel->up=aux;
                 nivel = nivel->dwn;
@@ -1860,47 +2006,6 @@ void gameplay(jugador*player,level* nivel, int h, int x_before, int y_before){//
     wrefresh(menuwin);
     keypad(menuwin,true);
     getch();
-}
-
-int transformarAEntero(char *charNumero){
-    int largo = strlen(charNumero);
-    int numero = 0;
-    for(int i=0;i<largo;i++){
-        numero=(charNumero[i]-48)+(numero*10);
-    }
-    return numero;
-}
-
-jugador *crearJugador(char *linea){//retorna un jugador a partir del archivo.txt
-    jugador *j = (jugador *) malloc(sizeof(jugador)); // Asigna memoria a todo la struct
-    j->nombre = get_csv_field(linea, 1);
-    j->dfs = transformarAEntero(get_csv_field(linea,2));
-    j->atk = transformarAEntero(get_csv_field(linea,3));
-    j->nivel = transformarAEntero(get_csv_field(linea,4));
-    return j;
-}
-
-void typewriter(int x, int y, int velocidad, WINDOW* ventana, char* text){
-    int i;
-    for(i=0;i<strlen(text);i++){
-        mvprintw(x,y+i,"%c",text[i]);
-        wrefresh(ventana);
-        napms(velocidad);
-    }
-}
-
-void showtitle(int x, int y, int velocidad){
-    attroff(A_BOLD);
-    attrset(A_BOLD);
-    typewriter(y,x,velocidad,stdscr,"==================================================================================");
-    typewriter(y+1,x,velocidad,stdscr,"-@@@---@@@@-@@@@@@-@@@@@@@-------@@@@----@@@---@@@@-@@@@----@@@@-@@@@@@-@@-----@@-");
-    typewriter(y+2,x,velocidad,stdscr,"--@@--@@@-----@@----@@---@@-----@@--@@----@@--@@@----@@------@@----@@---@@@@---@@-");
-    typewriter(y+3,x,velocidad,stdscr,"--@@-@@@------@@----@@---@@----@@----@@---@@-@@@-----@@------@@----@@---@@-@@--@@-");
-    typewriter(y+4,x,velocidad,stdscr,"--@@@@@-------@@----@@@@@@-----@@@@@@@@---@@@@@------@@------@@----@@---@@--@@-@@-");
-    typewriter(y+5,x,velocidad,stdscr,"--@@-@@@------@@----@@--@@-----@@----@@---@@-@@@-----@@------@@----@@---@@---@@@@-");
-    typewriter(y+6,x,velocidad,stdscr,"--@@--@@@-----@@----@@---@@----@@----@@---@@--@@@----@@@----@@@----@@---@@----@@@-");
-    typewriter(y+7,x,velocidad,stdscr,"-@@@---@@@@-@@@@@@--@@----@@@-@@------@@-@@@---@@@@----@@@@@@----@@@@@@-@@-----@@-");
-    typewriter(y+8,x,velocidad,stdscr,"==================================================================================");
 }
 
 int menu_principal(ALLEGRO_SAMPLE *navegate1){//Pantalla Principal al iniciar el juego
@@ -1973,33 +2078,6 @@ void ingresar(char *nombre){
     fclose(nuevoJugador);
 }
 
-void borrarPantalla(){
-typewriter(8,40,20,stdscr,"                                          ");
-typewriter(10,40,20,stdscr,"                                          ");
-typewriter(12,40,20,stdscr,"                                          ");
-typewriter(14,40,20,stdscr,"                                          ");
-typewriter(16,40,20,stdscr,"                                          ");
-typewriter(17,23,20,stdscr,"                                          ");
-refresh();
-}
-
-void historia(int key){
-    keypad(stdscr,true);
-    do{
-        typewriter(4,40,50,stdscr,"Erase");
-        typewriter(5,40,50,stdscr,"una");
-        typewriter(6,40,50,stdscr,"vez");
-        typewriter(7,40,50,stdscr,"un");
-        typewriter(8,40,50,stdscr,"joven");
-        typewriter(9,40,50,stdscr,"que");
-        typewriter(10,40,50,stdscr,"perdio");
-        typewriter(11,40,50,stdscr,"su alma");
-        typewriter(13,40,50,stdscr,"FIN");
-        napms(1000);
-        return;
-    }while((key=getch())!= ESPACIO);
-}
-
 int numero_jugadores(){
     FILE *contar= fopen("jugadores.txt", "r");
     int acum=0;
@@ -2026,8 +2104,7 @@ jugador *cargarJugador(char *nombre){
         printw("NO SE PUDO ABRIR EL ARCHIVO");
     }
     char linea[101];
-    while(fgets(linea, 100, cargar) != NULL)
-    {
+    while(fgets(linea, 100, cargar) != NULL){
         j = crearJugador(linea);
         if(strcmp(j->nombre,nombre) == 0){
             fclose(cargar);
@@ -2035,13 +2112,6 @@ jugador *cargarJugador(char *nombre){
         }
     }
     return NULL;
-}
-
-void no_elegible(){//Borra el espacio necesario en el menu principal
-    typewriter(31,97,5,stdscr,"                                  ");
-    typewriter(32,97,5,stdscr,"                                  ");
-    typewriter(33,97,5,stdscr,"                                  ");
-    typewriter(34,97,5,stdscr,"                                  ");
 }
 
 void mostrar(ALLEGRO_SAMPLE *bkgmusic, ALLEGRO_SAMPLE *navegate){//Muestra menu de carga de jugadores
@@ -2211,9 +2281,55 @@ void mostrar(ALLEGRO_SAMPLE *bkgmusic, ALLEGRO_SAMPLE *navegate){//Muestra menu 
     }
 
     }
+}
 
+void guardar(jugador* player, char* nombre_borrar){//player jugador que quiero
 
+    FILE* archivo = fopen("jugadores.txt","w+");
 
+    char linea[101];
+
+    char text[1000];
+
+    list* listaJugadores=create_list();
+
+    while(fgets(linea,100,archivo)!=NULL){
+        jugador *j;
+    
+        j=cargarJugador((get_csv_field(linea, 1)));
+        if(j->nombre==nombre_borrar){//Se busca el nombre del jugador a borrar si se encuentra se agrega en esa posicion de la lista al nuevo jugador
+            listaJugadores->current=player;
+            listaJugadores->current=listaJugadores->current->next;
+
+        }   
+        else{
+            listaJugadores->current=j;
+            listaJugadores->current=listaJugadores->current->next;
+        }
+    }
+
+    fclose(archivo);
+    int Num_jugadores=numero_jugadores();
+
+    FILE* archivo2 = fopen("jugadores.txt","w+");
+
+    while(listaJugadores->current->prev!=NULL){
+        listaJugadores->current = listaJugadores->current->prev;
+    }
+
+    for(int i=0;i<Num_jugadores;i++){
+        fputs(listaJugadores->current->nombre,archivo2);
+        fputs(",",archivo2);
+        fputs(listaJugadores->current->atk,archivo2);
+        fputs(",",archivo2);
+        fputs(listaJugadores->current->dfs,archivo2);
+        fputs(",",archivo2);
+        fputs(listaJugadores->current->nivel,archivo2);
+        fputs("\n",archivo2);
+        listaJugadores->current=listaJugadores->current->next;
+    }
+
+fclose(archivo2);
 
 }
 
@@ -2264,15 +2380,6 @@ void main(){
 }
 
 void nueva_partida(){
-    //Caso base
-    if(numero_jugadores()>=4){
-        attroff(A_BOLD);
-        attrset(A_BOLD);
-     typewriter(20,20,5,stdscr,"Hay demasiados jugadores");
-     getch();
-     typewriter(20,20,5,stdscr,"                        ");
-     main();
-    }
     clear();
     init_pair(20,COLOR_RED,COLOR_BLACK);
     bkgd(COLOR_PAIR(20));
@@ -2345,6 +2452,74 @@ void nueva_partida(){
             return nueva_partida();
         }
     }
+
+    //
+
+    //Caso Muchos jugadores
+    if(numero_jugadores()>=4){
+     attroff(A_BOLD);
+     attrset(A_BOLD);
+     clear();
+     typewriter(10,35,100,stdscr,"Hay demasiados jugadores");
+     refresh();
+     getch();
+     //typewriter(10,35,100,stdscr,"                         ");
+     getch();
+     refresh();
+     //clear();
+
+     typewriter(12,35,100,stdscr,"Quieres sobrescribir un jugador?");
+     //typewriter(12,35,100,stdscr,"                                  ");
+        key = ESPACIO;
+        x=42;
+        mvwprintw(stdscr,14,35,"Sobrescribir");
+        mvwprintw(stdscr,14,55,"Menu principal");
+        mvwprintw(stdscr,15,42,"^");
+
+        do{
+            key = getch();
+            refresh();
+            if(key == KEY_LEFT){
+                if(x==42)continue;
+                x=42;
+                mvwprintw(stdscr,15,60," ");
+                mvwprintw(stdscr,15,42,"^");
+                continue;
+            }
+            if(key == KEY_RIGHT){
+                if(x==60)continue;
+                x=60;//volver al menu
+                mvwprintw(stdscr,15,42," ");
+                mvwprintw(stdscr,15,60,"^");
+                continue;
+            }
+
+        }while(key !=ENTER);
+        
+        if(x==42){
+        
+           menu_jugadores();
+
+           jugador *p = crearJugadorVacio(cadena);
+
+           guardar(p,"aaa");  
+
+           getch();
+           level*nodo = create_node(0);
+           gameplay(p,nodo,0,9,9);
+        }
+
+        if(x==60){
+            clear();
+            return main();
+        }
+
+
+     //main();
+    }
+
+
+    ///
     ingresar(cadena);
     jugador *player = cargarJugador(cadena);
     level* nivel = create_node(0);
@@ -2361,3 +2536,5 @@ void nueva_partida(){
     clear();
     gameplay(player,nivel,0,9,9);
 }
+
+//FUNCIONES PRINCIPALES//
